@@ -67,6 +67,24 @@ Structured verification cases for journal entry persistence, save file compatibi
 - **Steps:**
   1. Trigger dialogue choices that award journal entries or set flags.
   2. Check timing of `save_game()` calls and quit mid-dialogue.
-- **Expected Result:**
+- **Expected Result:** 
   - `save_game()` runs only after both `GameState.set_flag()` and `Journal.discover()` finish.
   - Quitting mid-dialogue leaves no partial or corrupted save.
+
+### 9. Valid Save with Malformed Journal Field
+- **Steps:**
+  1. Load a `user://save.json` that parses cleanly with valid `flags` and `scene`, but `journal` is the wrong type (e.g., `"journal": "edith_log_01"` as a string instead of a list, or a dictionary/number).
+  2. Observe `load_game()` execution and state restoration.
+- **Expected Result:**
+  - `load_game()` returns `true`.
+  - `flags` and `current_scene` still load intact.
+  - `Journal.deserialize()` resets `_entries` to `[]` without throwing a Godot 4 typed-array error.
+
+### 10. Duplicate Entry Discovery
+- **Steps:**
+  1. Call `Journal.discover("edith_log_01")` more than once (including whitespace variants like `" edith_log_01 "`).
+  2. Observe `_entries` array state, signal emissions, and trigger `save_game()`.
+- **Expected Result:**
+  - `_entries` retains only a single `"edith_log_01"`.
+  - `entry_added` emits only on the first discovery.
+  - `save_game()` writes a deduplicated `journal` array.
