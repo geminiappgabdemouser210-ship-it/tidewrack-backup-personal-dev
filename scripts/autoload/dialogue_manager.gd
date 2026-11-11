@@ -6,8 +6,7 @@ extends Node
 ##   { "speaker": String, "text": String,
 ##     "next": String|null,                     # linear node; null ends the graph
 ##     "choices": [ {"text": String, "next": String, "set_flag": {..}} ],
-##     "set_flag": { "flag_name": value },       # applied when the node is entered
-##     "discover_entry": "entry_id" }             # adds a journal entry on visit
+##     "set_flag": { "flag_name": value } }      # applied when the node is entered
 ##
 ## UI (dialogue_box.gd) listens to these signals; it does not read the graph.
 
@@ -70,9 +69,6 @@ func _goto(id: String) -> void:
 	_current_id = id
 	var node: Dictionary = _graph[id]
 	_apply_flags(node.get("set_flag", {}))
-	var journal_entry: Variant = node.get("discover_entry", "")
-	if typeof(journal_entry) == TYPE_STRING:
-		Journal.discover(journal_entry)
 	line_shown.emit(
 		str(node.get("speaker", "")),
 		str(node.get("text", "")),
