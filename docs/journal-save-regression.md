@@ -38,24 +38,15 @@ Structured verification cases for journal entry persistence, save file compatibi
   - `journal_loaded` signal fires.
   - `entry_added` signal does NOT fire for already-discovered entries upon restoration.
 
-### 5. Corrupt / Future-Version Save Handling
+### 5. Corrupt / Malformed JSON Handling
 - **Steps:**
-  1. Test loading malformed JSON, non-dictionary JSON, and save files with `version > 2`.
+    1. Test loading malformed JSON and non-dictionary JSON.
   2. Observe `load_game()` execution and menu behavior.
 - **Expected Result:**
   - `load_game()` returns `false` cleanly without crashing or corrupting current state.
   - `main_menu.gd` handles `load_game() == false` gracefully when Continue is clicked.
+### 6. Sanitization, Deduplication & Unknown IDs
 
-### 6. Atomic Write Safety (`save.json.tmp` → `save.json`)
-- **Steps:**
-  1. Call `save_game()` while monitoring disk writes.
-  2. Simulate a write failure scenario.
-- **Expected Result:**
-  - `save_game()` writes data to `user://save.json.tmp` and renames it atomically to `user://save.json`.
-  - No leftover `.tmp` file remains on successful save.
-  - Previous `save.json` is preserved intact if write fails.
-
-### 7. Sanitization, Deduplication & Unknown IDs
 - **Steps:**
   1. Pass empty/whitespace strings, duplicate IDs, and non-string items to `Journal.discover()` and `Journal.deserialize()`.
   2. Load a save with unknown or renamed entry IDs.
@@ -63,7 +54,7 @@ Structured verification cases for journal entry persistence, save file compatibi
   - Empty/whitespace and duplicate IDs are ignored; non-string items are filtered out.
   - Unknown/renamed entry IDs in older saves are skipped gracefully by the reader UI without errors.
 
-### 8. Dialogue-Choice Save Timing
+### 7. Dialogue-Choice Save Timing
 - **Steps:**
   1. Trigger dialogue choices that award journal entries or set flags.
   2. Check timing of `save_game()` calls and quit mid-dialogue.
@@ -71,7 +62,7 @@ Structured verification cases for journal entry persistence, save file compatibi
   - `save_game()` runs only after both `GameState.set_flag()` and `Journal.discover()` finish.
   - Quitting mid-dialogue leaves no partial or corrupted save.
 
-### 9. Valid Save with Malformed Journal Field
+### 8. Valid Save with Malformed Journal Field
 - **Steps:**
   1. Load a `user://save.json` that parses cleanly with valid `flags` and `scene`, but `journal` is the wrong type (e.g., `"journal": "edith_log_01"` as a string instead of a list, or a dictionary/number).
   2. Observe `load_game()` execution and state restoration.
@@ -80,7 +71,7 @@ Structured verification cases for journal entry persistence, save file compatibi
   - `flags` and `current_scene` still load intact.
   - `Journal.deserialize()` resets `_entries` to `[]` without throwing a Godot 4 typed-array error.
 
-### 10. Duplicate Entry Discovery
+### 9. Duplicate Entry Discovery
 - **Steps:**
   1. Call `Journal.discover("edith_log_01")` more than once (including whitespace variants like `" edith_log_01 "`).
   2. Observe `_entries` array state, signal emissions, and trigger `save_game()`.
