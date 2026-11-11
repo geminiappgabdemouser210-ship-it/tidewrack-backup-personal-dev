@@ -1,9 +1,27 @@
 extends SceneTree
 ## Headless regression checks for the save schema and journal compatibility.
 
+var _failures: Array[String] = []
+
 
 func _init() -> void:
 	call_deferred("_run")
+
+
+func _check(condition: bool, case_name: String) -> void:
+	if not condition:
+		_failures.append(case_name)
+
+
+func _finish() -> void:
+	if _failures.is_empty():
+		print("save-state regression checks passed")
+		quit(0)
+		return
+	printerr("save-state regression checks failed (%d):" % _failures.size())
+	for case_name in _failures:
+		printerr("  FAIL: %s" % case_name)
+	quit(1)
 
 
 func _run() -> void:
@@ -18,14 +36,14 @@ func _run() -> void:
 	game_state.set_flag("trusted_edith", false)
 	journal.discover("ediths_last_log")
 	journal.discover("radio_transcript")
-	assert(game_state.save_game())
+	_check(game_state.save_game(), "round-trip: save succeeds")
 
 	game_state.new_game()
-	assert(game_state.load_game())
-	assert(game_state.current_scene == "res://scenes/lamp_room.tscn")
-	assert(game_state.get_flag("skeptic") == true)
-	assert(game_state.get_flag("trusted_edith") == false)
-	assert(journal.entries() == ["ediths_last_log", "radio_transcript"])
+	_check(game_state.load_game(), "round-trip: load succeeds")
+	_check(game_state.current_scene == "res://scenes/lamp_room.tscn", "round-trip: restores scene")
+	_check(game_state.get_flag("skeptic") == true, "round-trip: restores skeptic flag")
+	_check(game_state.get_flag("trusted_edith") == false, "round-trip: restores trusted_edith flag")
+	_check(journal.entries() == ["ediths_last_log", "radio_transcript"], "round-trip: restores journal entries")
 
 	# Existing saves did not have a journal key. They must still load their flags and
 	# begin with an empty journal instead of inheriting the previous session.
@@ -38,10 +56,10 @@ func _run() -> void:
 	}))
 	legacy.close()
 	journal.discover("stale_entry")
-	assert(game_state.load_game())
-	assert(game_state.get_flag("believer") == true)
-	assert(game_state.get_flag("radioed_tom") == true)
-	assert(journal.entries().is_empty())
+	_check(game_state.load_game(), "older save: load succeeds")
+	_check(game_state.get_flag("believer") == true, "older save: restores believer flag")
+	_check(game_state.get_flag("radioed_tom") == true, "older save: restores radioed_tom flag")
+	_check(journal.entries().is_empty(), "older save: starts with an empty journal")
 
 	# An invalid journal field is contained without discarding valid game state.
 	var malformed := FileAccess.open("user://save.json", FileAccess.WRITE)
@@ -53,10 +71,10 @@ func _run() -> void:
 	}))
 	malformed.close()
 	journal.discover("stale_entry")
-	assert(game_state.load_game())
-	assert(game_state.current_scene == "res://scenes/lamp_room.tscn")
-	assert(game_state.get_flag("skeptic") == true)
-	assert(journal.entries().is_empty())
+	_check(game_state.load_game(), "malformed journal: load succeeds")
+	_check(game_state.current_scene == "res://scenes/lamp_room.tscn", "malformed journal: restores scene")
+	_check(game_state.get_flag("skeptic") == true, "malformed journal: restores flags")
+	_check(journal.entries().is_empty(), "malformed journal: clears stale entries")
 
 	# Invalid array values are filtered while valid IDs retain first-seen order.
 	var mixed_entries := FileAccess.open("user://save.json", FileAccess.WRITE)
@@ -67,18 +85,17 @@ func _run() -> void:
 		"journal": ["", "ediths_last_log", 42, "ediths_last_log", "  radio_transcript  "],
 	}))
 	mixed_entries.close()
-	assert(game_state.load_game())
-	assert(game_state.get_flag("believer") == true)
-	assert(journal.entries() == ["ediths_last_log", "radio_transcript"])
+	_check(game_state.load_game(), "invalid entries: load succeeds")
+	_check(game_state.get_flag("believer") == true, "invalid entries: restores flags")
+	_check(journal.entries() == ["ediths_last_log", "radio_transcript"], "invalid entries: filters and de-duplicates IDs")
 
 	# Discovery is idempotent, and New Game clears only the in-memory state.
 	journal.discover("ediths_last_log")
 	journal.discover("ediths_last_log")
-	assert(journal.entries() == ["ediths_last_log", "radio_transcript"])
+	_check(journal.entries() == ["ediths_last_log", "radio_transcript"], "duplicate discovery: keeps one copy")
 	game_state.new_game()
-	assert(journal.entries().is_empty())
-	assert(game_state.has_save())
+	_check(journal.entries().is_empty(), "new game: clears journal state")
+	_check(game_state.has_save(), "new game: preserves existing save slot")
 
 	game_state.delete_save()
-	print("save-state regression checks passed")
-	quit()
+	_finish()

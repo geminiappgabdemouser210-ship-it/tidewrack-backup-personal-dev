@@ -24,6 +24,10 @@ godot --headless --path . -s tests/test_save_state.gd
 python3 tests/validate_dialogue.py
 ```
 
+`tests/test_save_state.gd` prints each failing case and exits with status `1`
+when any check fails; it prints the pass message and exits `0` only when every
+check succeeds.
+
 The dialogue validator remains in the command sequence to confirm that the
 unchanged dialogue graphs still parse, resolve targets, and have a reachable
 ending.
