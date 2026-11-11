@@ -1,5 +1,4 @@
 # Tidewrack — Game Design Document
-# Tidewrack — Game Design Document
 
 Concise and living. For story canon see [`narrative-bible.md`](narrative-bible.md);
 for schedule see [`milestones.md`](milestones.md).
