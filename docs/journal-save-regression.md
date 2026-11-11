@@ -20,7 +20,7 @@ Saving first writes a temporary file, then keeps the prior complete save as a
 recovery copy while replacing the primary file. If the primary file is
 unreadable, Continue loads that recovery copy.
 
-## Automated regression cases
+## How to run the automated checks
 
 Run from the repository root:
 
@@ -29,39 +29,66 @@ godot --headless --path . -s tests/test_save_state.gd
 python3 tests/validate_dialogue.py
 ```
 
-`tests/test_save_state.gd` covers:
-
-1. **Current save / Continue round-trip** — saves a scene, `skeptic`,
-   `trusted_edith`, and two journal IDs; resets the runtime; then confirms that
-   Continue restores all of them exactly.
-2. **Recovery after primary corruption** — makes a second save, corrupts its
-   primary file, then verifies that Continue restores the previous complete save
-   rather than losing flags or journal entries.
-3. **Version-1 compatibility** — loads a v1 payload with `believer` and
-   `radioed_tom`; confirms both flags remain intact and that no stale journal
-   entry leaks in from the current session.
-
 The dialogue validator remains in the command sequence because journal discovery
 is declared in the dialogue graph. It verifies that the modified graph still
 parses, resolves targets, and has a reachable ending.
 
-## Pre-PR smoke checks
+## Pre-PR regression checklist
 
-Run these manually in a local build:
+Tick each case only after observing the stated expected result. Cases labelled
+**Automated** are covered by `tests/test_save_state.gd`; run the command above
+and record its passing result. The other cases are deliberate local smoke tests.
 
-1. Start a new game, read the logbook, Pause → Save, return to the title, then
-   Continue. Confirm the logbook entry is still present once the reader UI
-   consumes `Journal.entries()`.
-2. Make both a narrative choice and a journal discovery before saving. Continue
-   must restore the chosen story flag and the discovered entry together.
-3. Save twice with different journal state. Damage or remove the primary
-   `user://save.json`; Continue should resume from the first save via
-   `user://save.backup.json`.
-4. Try malformed journal payloads (missing field, non-array, blank IDs,
-   duplicates, and non-string values). A valid scene and flag payload must still
-   load; invalid journal values are ignored.
-5. Confirm a v1 `user://save.json` still enables Continue and preserves its
-   story flags. Its journal should be empty.
+- [ ] **JS-01 — Save / Continue round-trip (Automated + smoke).**
+  - Setup: Start a new game, discover `ediths_last_log`, set `skeptic` and
+    `trusted_edith`, and save from Pause.
+  - Action: Return to title, select Continue.
+  - Expected: The saved scene loads; both flags have their saved values; the
+    journal contains `ediths_last_log` exactly once.
+
+- [ ] **JS-02 — Broken journal field does not discard a valid save.**
+  - Setup: Create a valid v2 save with a known scene and story flags. Edit only
+    its `journal` value in `user://save.json` to a string such as
+    `"not-a-list"`.
+  - Action: Select Continue.
+  - Expected: Continue succeeds and restores the scene and story flags. The
+    journal is empty; no stale in-memory entries remain and no crash occurs.
+
+- [ ] **JS-03 — Duplicate discovery is idempotent.**
+  - Setup: Start a new game with an empty journal.
+  - Action: Trigger discovery of the same entry ID twice (for example, call
+    `Journal.discover("ediths_last_log")` twice in a debug session), save, and
+    Continue.
+  - Expected: The entry appears once before and after Continue. The saved
+    `journal` array contains one copy of that ID.
+
+- [ ] **JS-04 — New Game clears discovered entries in memory.**
+  - Setup: Discover at least one journal entry in an active session.
+  - Action: Start New Game without saving the new run.
+  - Expected: `Journal.entries()` is empty and story flags are reset for the new
+    run. The previous on-disk save remains available to Continue until the new
+    run is saved; this is intentional single-slot behavior.
+
+- [ ] **JS-05 — Primary-save recovery (Automated + smoke).**
+  - Setup: Save once, change journal/flag state, and save again. Damage or
+    remove `user://save.json` while leaving `user://save.backup.json` intact.
+  - Action: Select Continue.
+  - Expected: Continue resumes the first, complete save from the recovery copy;
+    its flags and journal entries are restored together.
+
+- [ ] **JS-06 — Version-1 compatibility (Automated + smoke).**
+  - Setup: Use a v1 `user://save.json` with `believer` and `radioed_tom`, no
+    `journal` field, and no backup file.
+  - Action: Select Continue.
+  - Expected: Continue succeeds, both existing flags retain their values, and
+    the journal starts empty.
+
+- [ ] **JS-07 — Invalid entries are contained.**
+  - Setup: Put a valid `journal` array in a v2 save containing blank strings,
+    duplicate strings, and non-string values.
+  - Action: Select Continue.
+  - Expected: Continue restores valid scene/flags. The journal retains only
+    unique, non-empty string IDs, in first-seen order.
 
 ## Known boundaries to decide before launch
 
