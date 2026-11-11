@@ -2,6 +2,7 @@
 	"logbook": {
 		"speaker": "Keeper's Log",
 		"text": "The ledger is open to the last filled page. The handwriting is Edith Vane's — the keeper who was here before you. It gets smaller toward the bottom, as if she were running out of nerve, not paper.",
+		"discover_entry": "ediths_last_log",
 		"next": "logbook_2"
 	},
 	"logbook_2": {
