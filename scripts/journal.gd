@@ -1,9 +1,9 @@
 extends Node
-## Journal — discovered-logs system (Public Demo scaffold).
+## Journal — discovered-log state.
 ##
-## Meant to be autoloaded as `Journal`. As the player examines objects, the
-## dialogue "set_flag" hooks will record discovered entries here; the journal
-## screen renders them. Scaffold only: storage + a couple of helpers, no UI yet.
+## Autoloaded as `Journal`. GameState owns the on-disk save; this node keeps
+## the journal's in-memory state and exposes a deliberately small persistence
+## boundary for it. Reader UI can consume entries() without owning save logic.
 
 signal entry_added(id: String)
 
@@ -11,6 +11,9 @@ var _entries: Array[String] = []
 
 
 func discover(id: String) -> void:
+	if id.is_empty():
+		push_warning("Journal: ignoring an empty entry id.")
+		return
 	if id in _entries:
 		return
 	_entries.append(id)
@@ -23,4 +26,26 @@ func entries() -> Array[String]:
 
 func has(id: String) -> bool:
 	return id in _entries
-# TODO(demo): persist entries through GameState.save_game() and add the reader UI.
+
+
+func reset() -> void:
+	_entries.clear()
+
+
+## Returns only JSON-safe data for GameState's save payload.
+func save_data() -> Array[String]:
+	return entries()
+
+
+## Restores a save payload defensively. Invalid values are ignored rather than
+## poisoning the journal or preventing the rest of a valid save from loading.
+func load_data(value: Variant) -> void:
+	_entries.clear()
+	if typeof(value) != TYPE_ARRAY:
+		return
+	for raw_id in value:
+		if typeof(raw_id) != TYPE_STRING:
+			continue
+		var id := (raw_id as String).strip_edges()
+		if not id.is_empty() and not id in _entries:
+			_entries.append(id)

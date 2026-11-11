@@ -27,6 +27,7 @@ func get_flag(name: String, default: Variant = false) -> Variant:
 func new_game() -> void:
 	flags.clear()
 	current_scene = "res://scenes/game.tscn"
+	Journal.reset()
 	state_changed.emit()
 
 
@@ -39,6 +40,7 @@ func save_game() -> bool:
 		"version": SAVE_VERSION,
 		"scene": current_scene,
 		"flags": flags,
+		"journal": Journal.save_data(),
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -65,10 +67,13 @@ func load_game() -> bool:
 		return false
 
 	var data: Dictionary = parsed
-	# Future-proofing: migrate older save versions here.
+
+	# Existing saves omit journal data. Their scene and story flags use the
+	# original field names and are restored unchanged.
 	current_scene = data.get("scene", "res://scenes/game.tscn")
 	var loaded_flags: Variant = data.get("flags", {})
 	flags = loaded_flags if typeof(loaded_flags) == TYPE_DICTIONARY else {}
+	Journal.load_data(data.get("journal", []))
 	state_changed.emit()
 	return true
 
