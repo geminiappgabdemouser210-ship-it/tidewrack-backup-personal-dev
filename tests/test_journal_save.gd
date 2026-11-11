@@ -42,7 +42,8 @@ func _initialize() -> void:
 		print("ALL JOURNAL/SAVE TESTS PASSED")
 		quit(0)
 	else:
-		push_error("%d journal/save 
+		push_error("%d journal/save test assertion(s) failed." % _failures)
+		quit(1)
 
 
 func _on_entry_added(_id: String) -> void:
@@ -162,5 +163,4 @@ func _test_duplicate_entry_discovery() -> void:
 	var parsed: Variant = JSON.parse_string(f.get_as_text()) if f != null else null
 	if f != null:
 		f.close()
-	_assert(typeof(parsed) == TYPE_DICTIONARY and parsed.get("journal", []) == ["edith_log_01"], "saved JSON journal should be deduplicated")test assertion(s) failed." % _failures)
-		quit(1)
+	_assert(typeof(parsed) == TYPE_DICTIONARY and parsed.get("journal", []) == ["edith_log_01"], "saved JSON journal should be deduplicated")
