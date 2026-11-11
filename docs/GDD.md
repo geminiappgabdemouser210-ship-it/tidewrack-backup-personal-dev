@@ -22,10 +22,10 @@ who answers you) responds. Repeat across locations toward the water.
 | System | State | Notes |
 |--------|-------|-------|
 | Branching dialogue | ✅ vertical slice | JSON graphs, choices set flags. |
-| Save / load        | ✅ vertical slice | Single slot, `user://save.json`. (`SAVE_VERSION = 2`); persists flags, scene, and discovered journal entries; backward-compatible with `v1`. |
+| Save / load        | ✅ vertical slice | Single slot, `user://save.json`; persists flags, scene, and discovered journal entries; backward-compatible with older saves. | 
 | Menus + settings   | ✅ vertical slice | Title, pause, volume, fullscreen. |
 | Player movement    | ✅ vertical slice | Top-down; wall collision pending. |
-| Journal            | ✅ vertical slice | Discovered entries persisted in `user://save.json` (`SAVE_VERSION = 2`) across save/load and Continue, reset cleanly on New Game, and backward-compatible with `v1` saves; re-readable. |⏳ 
+| Journal            | ✅ vertical slice | Discovered entries persisted in `user://save.json` across save/load and Continue, reset cleanly on New Game, and backward-compatible with older saves; re-readable. |
 | Second location    | ⏳ demo           | The lamp room. |
 | Controller + remap  | ⏳ demo          | Currently keyboard-only, built-in actions. |
 | Localization        | ⏳ press build    | String extraction + translation tables. |
