@@ -8,8 +8,7 @@ extends Node
 signal state_changed
 
 const SAVE_PATH := "user://save.json"
-const SAVE_TMP_PATH := "user://save.json.tmp"
-const SAVE_VERSION := 2
+const SAVE_VERSION := 1
 
 ## Story flags set during play, e.g. {"trusted_edith": true}.
 var flags: Dictionary = {}
@@ -44,18 +43,12 @@ func save_game() -> bool:
 		"flags": flags,
 		"journal": Journal.serialize(),
 	}
-	var file := FileAccess.open(SAVE_TMP_PATH, FileAccess.WRITE)
+	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
-		push_error("GameState: could not open temp save file for writing.")
+		push_error("GameState: could not open save file for writing.")
 		return false
 	file.store_string(JSON.stringify(payload, "\t"))
-	file.flush()
 	file.close()
-
-	var dir := DirAccess.open("user://")
-	if dir == null or dir.rename("save.json.tmp", "save.json") != OK:
-		push_error("GameState: could not finalize save file.")
-		return false
 	return true
 
 
@@ -75,16 +68,10 @@ func load_game() -> bool:
 		return false
 
 	var data: Dictionary = parsed
-	var version := int(data.get("version", 1))
-	if version > SAVE_VERSION:
-		push_error("GameState: save version %d is newer than supported (%d)." % [version, SAVE_VERSION])
-		return false
-
-	current_scene = str(data.get("scene", "res://scenes/game.tscn"))
+	# Future-proofing: migrate older save versions here.
+	current_scene = data.get("scene", "res://scenes/game.tscn")
 	var loaded_flags: Variant = data.get("flags", {})
-	flags = loaded_flags.duplicate(true) if typeof(loaded_flags) == TYPE_DICTIONARY else {}
-
-	# v1 saves have no "journal" key; Journal.deserialize() safely resets to [].
+	flags = loaded_flags if typeof(loaded_flags) == TYPE_DICTIONARY else {}
 	Journal.deserialize(data.get("journal", []))
 	state_changed.emit()
 	return true
